@@ -18,6 +18,9 @@ public:
 	// Sets default values for this actor's properties
 	AMarbles();
 
+    UPROPERTY(VisibleAnywhere, Blueprintable, Category = StaticMesh)
+    UStaticMeshComponent* MarblesMesh;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -42,28 +45,29 @@ public:
 
     FTransform ProjectileTransform;
 
-	virtual void Tick(float DeltaSeconds) override;
+	void Tick(float DeltaSeconds) override;
 
-	virtual void Attack();
-    virtual void AerialAttack();
-    virtual void ModeAttack();
-    virtual void ModeAerialAttack();
-    virtual void ForwardAttack();
-    virtual void BackwardAttack();
-    virtual void LeftwardAttack();
-    virtual void RightwardAttack();
-    virtual void AerialForwardAttack();
-    virtual void AerialBackwardAttack();
-    virtual void AerialLeftwardAttack();
-    virtual void AerialRightwardAttack();
-    virtual void ModeForwardAttack();
-    virtual void ModeBackwardAttack();
-    virtual void ModeLeftwardAttack();
-    virtual void ModeRightwardAttack();
-    virtual void ModeAerialForwardAttack();
-    virtual void ModeAerialBackwardAttack();
-    virtual void ModeAerialLeftwardAttack();
-    virtual void ModeAerialRightwardAttack();
+	void Attack();
+    void AerialAttack();
+    void ModeAttack();
+    void ModeAerialAttack();
+    void ForwardAttack();
+    void BackwardAttack();
+    void LeftwardAttack();
+    void RightwardAttack();
+    void AerialForwardAttack();
+    void AerialBackwardAttack();
+    void AerialLeftwardAttack();
+    void AerialRightwardAttack();
+    void ModeForwardAttack();
+    void ModeBackwardAttack();
+    void ModeLeftwardAttack();
+    void ModeRightwardAttack();
+    void ModeAerialForwardAttack();
+    void ModeAerialBackwardAttack();
+    void ModeAerialLeftwardAttack();
+    void ModeAerialRightwardAttack();
+    UStaticMeshComponent* GetMesh();
 
 
 };

@@ -103,3 +103,8 @@ void IWeaponClass::ModeAerialRightwardAttack()
 {
 	return;
 }
+
+UStaticMeshComponent* IWeaponClass::GetMesh()
+{
+	return 0;
+}

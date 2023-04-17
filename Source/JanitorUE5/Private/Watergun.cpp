@@ -9,6 +9,26 @@ AWatergun::AWatergun()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	WaterGunMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
+	WaterGunMesh->SetupAttachment(RootComponent);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> WaterGunMeshAsset(TEXT("StaticMesh'/Game/Weapons/WaterGun/watergun/candidate_1/sb_1_.sb_1_'"));
+	static ConstructorHelpers::FObjectFinder<UMaterial> WaterGunMaterialAsset(TEXT("StaticMesh'/Game/Weapons/WaterGun/watergun/candidate_1/04_-_Default.04_-_Default'"));
+	WaterGunMesh->SetMaterial(0, WaterGunMaterialAsset.Object);
+
+	if (WaterGunMeshAsset.Object)
+	{
+		WaterGunMesh->SetStaticMesh(WaterGunMeshAsset.Object);
+	}
+
+	WaterGunMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WaterGunMesh->SetMobility(EComponentMobility::Movable);
+	WaterGunMesh->SetWorldLocationAndRotation(FVector(0, 0, 0), FRotator(180, 0, 0));
+
+	//WaterGunMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WaterGunStaticMesh"));
+	//static ConstructorHelpers::FObjectFinder<UStaticMeshComponent> WaterGunFetch(TEXT("StaticMesh'/Game/Weapons/WaterGun/watergun/candidate_1/sb_1_.sb_1_'"));
+	//WaterGunMesh = WaterGunFetch.Object;
+	//WaterGunMesh->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+
 }
 
 // Called when the game starts or when spawned
@@ -23,6 +43,11 @@ void AWatergun::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+UStaticMeshComponent* AWatergun::GetMesh()
+{
+	return WaterGunMesh;
 }
 
 void AWatergun::Attack()

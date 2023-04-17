@@ -9,6 +9,19 @@ AMarbles::AMarbles()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	MarblesMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
+	MarblesMesh->SetupAttachment(RootComponent);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> marblesMeshAsset(TEXT("StaticMesh'/Game/Weapons/marble/bag/sac.sac'"));
+	static ConstructorHelpers::FObjectFinder<UMaterial> marblesMaterialAsset(TEXT("StaticMesh'/Game/Weapons/marble/bag/purrpl_velvet.purrpl_velvet'"));
+	MarblesMesh->SetMaterial(0, marblesMaterialAsset.Object);
+
+	if (marblesMeshAsset.Object)
+	{
+		MarblesMesh->SetStaticMesh(marblesMeshAsset.Object);
+	}
+
+	MarblesMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 }	
 
@@ -180,4 +193,9 @@ void AMarbles::ModeAerialRightwardAttack()
 {
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("(Marbles) Mode Aerial Rightward Attack pressed"));
 	return;
+}
+
+UStaticMeshComponent* AMarbles::GetMesh()
+{
+	return MarblesMesh;
 }

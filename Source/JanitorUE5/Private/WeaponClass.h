@@ -43,4 +43,5 @@ public:
     virtual void ModeAerialBackwardAttack();
     virtual void ModeAerialLeftwardAttack();
     virtual void ModeAerialRightwardAttack();
+    virtual UStaticMeshComponent* GetMesh();
 };

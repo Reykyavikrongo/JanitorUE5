@@ -48,6 +48,11 @@ class AJanitorCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+
+	/** StaticMesh For the Janitor, need to check how animation blueprint works for c++ static mesh implementation */
+	UPROPERTY()
+	UStaticMeshComponent* JanitorMesh;
+
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
@@ -105,7 +110,7 @@ class AJanitorCharacter : public ACharacter
 	// Keeps track of which directional input is being held at the moment, used to determine which attack will be used
 	bool WKeyPressed, AKeyPressed, SKeyPressed, DKeyPressed = false;
 
-	int JumpMaxCount = 2;
+	
 	
 
 	// Pointers to current renged and melee weapons
@@ -119,10 +124,6 @@ class AJanitorCharacter : public ACharacter
 	ABroom* broom;
 	ASkateboard* skate;
 	AWatergun* watergun;
-
-	// jump counter/ max number of jumps.
-	int JumpCounter = 0;
-
 
 	//timer
 	FTimerManager PostAnimTimerHandle;
@@ -170,6 +171,12 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintType, Category = Animations)
 	UAnimMontage* CurrentMontage;
 
+	// jump counter/ max number of jumps.
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int JumpCounter = 0;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int MaxNOfJumps = 2;
+
 protected:
 
 	/** Resets HMD orientation in VR. */
@@ -205,6 +212,13 @@ protected:
 	void StopTaunting();
 	void StartInvulnerable();
 	void StopInvulnerable();
+
+
+	/** Called when weapons are changed and the weapon being held has to be updated (either make the one that was 
+	being used invisible, which would be easier then the alternative of de-attaching it and attaching a new one.) */
+
+	void WeaponBeingHeldChangeMelee();
+	void WeaponBeingHeldChangeRanged();
 
 	/**
 	 * Called via input to turn look up/down at a given rate.

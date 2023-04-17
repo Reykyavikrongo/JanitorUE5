@@ -95,7 +95,6 @@ AJanitorCharacter::AJanitorCharacter()
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 
 
-	JumpMaxCount = 2;
 
 }
 
@@ -105,14 +104,26 @@ AJanitorCharacter::AJanitorCharacter()
 void AJanitorCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
 	// Initialize all weapons
+	// Initialize marbles and attch them to the sockets
 	FActorSpawnParameters SpawnInfo;
-	marbles = GetWorld()->SpawnActor<AMarbles>(AMarbles::StaticClass(), FTransform(), SpawnInfo);
-	//marbles = NewObject<AMarbles>();
+	const FTransform orientation_socket = GetMesh()->GetSocketTransform("Right_Hand_Weapon_Socket", ERelativeTransformSpace::RTS_World);
+	marbles = GetWorld()->SpawnActor<AMarbles>(AMarbles::StaticClass(), orientation_socket, SpawnInfo);
 	CurrentRangedWeapon = marbles;
-	broom = GetWorld()->SpawnActor<ABroom>(ABroom::StaticClass(), FTransform(), SpawnInfo);
+	marbles->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "Pelvis_Belt_Socket_Left");
+
+	// initialize broom
+	broom = GetWorld()->SpawnActor<ABroom>(ABroom::StaticClass(), orientation_socket, SpawnInfo);
 	CurrentMeleeWeapon = broom;
-	skate = GetWorld()->SpawnActor<ASkateboard>(ASkateboard::StaticClass(), FTransform(), SpawnInfo);
-	watergun = GetWorld()->SpawnActor<AWatergun>(AWatergun::StaticClass(), FTransform(), SpawnInfo);
+
+	// initialize skate
+	skate = GetWorld()->SpawnActor<ASkateboard>(ASkateboard::StaticClass(), orientation_socket, SpawnInfo);
+
+	// initialize watergun
+	watergun = GetWorld()->SpawnActor<AWatergun>(AWatergun::StaticClass(), orientation_socket, SpawnInfo);
+
+	watergun->AttachToComponent(this->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "Left_Hand_Weapon_Socket");
+	watergun->GetMesh()->SetHiddenInGame(true);
+
 
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
@@ -262,7 +273,7 @@ void AJanitorCharacter::Tick(float DeltaTime)
 
 void AJanitorCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
 {
-	if (JumpCounter >= JumpMaxCount)
+	if (JumpCounter >= MaxNOfJumps)
 	{
 		return;
 	}
@@ -291,13 +302,13 @@ void AJanitorCharacter::Jump()
 	else
 	{
 		JumpPressed = true;
-		if (IsAirborne && (JumpCounter < JumpMaxCount))
+		if (IsAirborne && (JumpCounter < MaxNOfJumps))
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("airjump"));
 			JumpCounter++;
 			DoubleJump();
 		}
-		else if (JumpCounter < JumpMaxCount) {
+		else if (JumpCounter < MaxNOfJumps) {
 			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("ground jump"));
 			IsAirborne = true;
 			Super::Jump();
@@ -315,7 +326,10 @@ void AJanitorCharacter::StopJumping()
 
 void AJanitorCharacter::DoubleJump()
 {
-	GetCharacterMovement()->DoJump(false);
+	//doesn't work
+	//GetCharacterMovement()->DoJump(false);
+
+	LaunchCharacter(FVector(0, 0, 600), false, true);
 }
 
 
@@ -853,45 +867,46 @@ void AJanitorCharacter::OnEndOverlapSphere(UPrimitiveComponent* OverlappedComp, 
 	}
 }
 
+void AJanitorCharacter::WeaponBeingHeldChangeMelee()
+{
+	
+}
+
+void AJanitorCharacter::WeaponBeingHeldChangeRanged()
+{
+
+}
+
 void AJanitorCharacter::SwapWatergun()
 {
-	if (CurrentRangedWeapon == watergun)
+	if (CurrentRangedWeapon != watergun)
 	{
-
-	}
-	else {
-	CurrentRangedWeapon = watergun;
+		CurrentRangedWeapon->GetMesh()->SetHiddenInGame(true);
+		CurrentRangedWeapon = watergun;
+		CurrentRangedWeapon->GetMesh()->SetHiddenInGame(false);
 	}
 }
 void AJanitorCharacter::SwapBroom()
 {
-	if (CurrentMeleeWeapon == broom)
+	if (CurrentMeleeWeapon != broom)
 	{
-
-	}
-	else {
 		CurrentMeleeWeapon = broom;
 	}
-	
 }
 void AJanitorCharacter::SwapMarbles()
 {
-	if (CurrentRangedWeapon == marbles)
+	if (CurrentRangedWeapon != marbles)
 	{
-
-	}
-	else {
+		CurrentRangedWeapon->GetMesh()->SetHiddenInGame(true);
 		CurrentRangedWeapon = marbles;
+		CurrentRangedWeapon->GetMesh()->SetHiddenInGame(false);
 	}
 }
 
 void AJanitorCharacter::SwapSkateboard()
 {
-	if (CurrentMeleeWeapon == skate)
+	if (CurrentMeleeWeapon != skate)
 	{
-
-	}
-	else {
 		CurrentMeleeWeapon = skate;
 	}
 }
