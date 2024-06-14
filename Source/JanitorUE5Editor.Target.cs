@@ -8,7 +8,7 @@ public class JanitorUE5EditorTarget : TargetRules
 	public JanitorUE5EditorTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Editor;
-		DefaultBuildSettings = BuildSettingsVersion.V2;
+		DefaultBuildSettings = BuildSettingsVersion.Latest;
 		ExtraModuleNames.Add("JanitorUE5");
 	}
 }

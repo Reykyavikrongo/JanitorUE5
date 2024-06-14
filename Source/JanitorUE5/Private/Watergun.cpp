@@ -2,10 +2,13 @@
 
 
 #include "Watergun.h"
+#include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
+#include "JanitorCharacter.h"
 
 // Sets default values
 AWatergun::AWatergun()
 {
+	janitor = Cast<AJanitorCharacter>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -22,7 +25,9 @@ AWatergun::AWatergun()
 
 	WaterGunMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	WaterGunMesh->SetMobility(EComponentMobility::Movable);
-	WaterGunMesh->SetWorldLocationAndRotation(FVector(0, 0, 0), FRotator(180, 0, 0));
+	//WaterGunMesh->SetWorldLocationAndRotation(FVector(-16.425, 0, -8.11), FRotator(180, 0, 0));
+	WaterGunMesh->AddRelativeLocation(FVector(-16.425, 0.0, -8.11));
+	WaterGunMesh->AddRelativeRotation(FRotator(0.0, 0.0, 180.0));
 
 	//WaterGunMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WaterGunStaticMesh"));
 	//static ConstructorHelpers::FObjectFinder<UStaticMeshComponent> WaterGunFetch(TEXT("StaticMesh'/Game/Weapons/WaterGun/watergun/candidate_1/sb_1_.sb_1_'"));

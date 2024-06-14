@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+#include "ENUMS.h"
 #include "WeaponClass.generated.h"
 
 // This class does not need to be modified.
@@ -16,6 +17,7 @@ class UWeaponClass : public UInterface
 /**
  * 
  */
+
 class IWeaponClass
 {
 	GENERATED_BODY()
@@ -44,4 +46,6 @@ public:
     virtual void ModeAerialLeftwardAttack();
     virtual void ModeAerialRightwardAttack();
     virtual UStaticMeshComponent* GetMesh();
+    virtual BufferedAttack DoAttack(DirectionENUM Direction);
+    virtual BufferedAttack DoModeAttack(DirectionENUM Direction);
 };

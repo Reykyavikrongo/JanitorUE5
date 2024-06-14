@@ -2,12 +2,38 @@
 
 
 #include "Broom.h"
+#include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
+#include "JanitorCharacter.h"
 
 // Sets default values
 ABroom::ABroom()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	janitor = Cast<AJanitorCharacter>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
+
+	BroomMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
+	BroomMesh->SetupAttachment(RootComponent);
+
+	//Setting the animations
+	ConstructorHelpers::FObjectFinder<UAnimMontage> BroomGroundAttackMontage(TEXT("/Script/Engine.AnimMontage'/Game/Characters/Janitor/CombatAnimations/Montages/broom_combo_1.broom_combo_1'"));
+	FirstGroundAttackMontage = BroomGroundAttackMontage.Object;
+	
+
+	// notice the static keyword is missing here, for future reference it made the wrong mesh be loaded in because i used a placeholder mesh before the actual one i wanted, this is caused by either the VS compiler or the static keyword or the fact that this is the only private classed weapon. idk
+	ConstructorHelpers::FObjectFinder<UStaticMesh> BroomMeshAsset(TEXT("StaticMesh'/Game/Weapons/Broom/broom5/broom_01.broom_01'"));
+	ConstructorHelpers::FObjectFinder<UMaterial> BroomMaterial(TEXT("Material'/Game/Weapons/Broom/broom5/broom_material.broom_material'"));
+
+	BroomMesh->SetMaterial(0, BroomMaterial.Object);
+
+	if (BroomMeshAsset.Object)
+	{
+		BroomMesh->SetStaticMesh(BroomMeshAsset.Object);
+	}
+
+	BroomMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BroomMesh->SetMobility(EComponentMobility::Movable); 
+	BroomMesh->AddRelativeLocation(FVector(0.0, 0.0, 130.0));
+	BroomMesh->AddRelativeRotation(FRotator(180.0, 0.0, 0.0));
+	BroomMesh->SetWorldScale3D(FVector(0.58, 0.58, 0.58));
 
 }
 
@@ -15,7 +41,6 @@ ABroom::ABroom()
 void ABroom::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
 // Called every frame
@@ -24,8 +49,23 @@ void ABroom::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
+UStaticMeshComponent* ABroom::GetMesh()
+{
+	return BroomMesh;
+}
+
 void ABroom::Attack() {
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("(Broom) Attack pressed"));
+	if (FirstGroundAttackMontage)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("animation valid (broom)"));
+		UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->PlayAnimMontage(FirstGroundAttackMontage, 1, NAME_None);
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("NO ANIMATION LOADED"));
+	}
+		
 	return;
 }
 
@@ -123,4 +163,3 @@ void ABroom::ModeAerialRightwardAttack() {
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("(Broom) Mode Aerial Rightward Attack pressed"));
 	return;
 }
-

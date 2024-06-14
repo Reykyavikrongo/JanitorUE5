@@ -4,17 +4,25 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "WeaponClass.h"
+#include "WeaponClassBufferImplementor.h"
+#include "GameFramework/Character.h"
 #include "Skateboard.generated.h"
 
 UCLASS()
-class JANITORUE5_API ASkateboard : public AActor, public IWeaponClass
+class JANITORUE5_API ASkateboard : public AWeaponClassBufferImplementor//public AActor, public IWeaponClass
 {
 	GENERATED_BODY()
 	
 public:	
 	// Sets default values for this actor's properties
 	ASkateboard();
+
+    // Static mesh for the weapon
+    UPROPERTY(VisibleAnywhere, Blueprintable, Category = StaticMesh)
+    UStaticMeshComponent* SkateboardMesh;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
+    UAnimMontage* FirstAttackMontage;
 
 protected:
 	// Called when the game starts or when spawned
@@ -44,5 +52,5 @@ public:
     virtual void ModeAerialBackwardAttack();
     virtual void ModeAerialLeftwardAttack();
     virtual void ModeAerialRightwardAttack();
-
+    UStaticMeshComponent* GetMesh();
 };

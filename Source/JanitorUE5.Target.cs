@@ -8,7 +8,7 @@ public class JanitorUE5Target : TargetRules
 	public JanitorUE5Target(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Game;
-		DefaultBuildSettings = BuildSettingsVersion.V2;
+		DefaultBuildSettings = BuildSettingsVersion.Latest;
 		ExtraModuleNames.Add("JanitorUE5");
 	}
 }

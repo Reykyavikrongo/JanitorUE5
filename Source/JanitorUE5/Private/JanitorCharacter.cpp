@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "JanitorCharacter.h"
-#include "HeadMountedDisplayFunctionLibrary.h"
+//#include "HeadMountedDisplayFunctionLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
 #include "Camera/CameraComponent.h"
@@ -15,7 +15,10 @@
 #include "GameFramework/SpringArmComponent.h"
 
 
-//TODO: figure out how to make the animation priority, also figure out when and where stuff should be called
+// TODO: broom attack needs anim notify states for hitboxes and animation ending because second or third attack isnt inputted.
+// TODO: figure out input buffering
+// TODO: make stinger animation(keep it simple), implement the movement
+
 
 //////////////////////////////////////////////////////////////////////////
 // AJanitorCharacter
@@ -63,6 +66,11 @@ AJanitorCharacter::AJanitorCharacter()
 	LockOnArrow->SetHiddenInGame(true);
 	LockOnArrow->AddLocalOffset(FVector(50, 0, 0));
 
+	//DirectionArrow
+	DirectionArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("Direction Arrow"));
+	DirectionArrow->SetupAttachment(RootComponent);
+	DirectionArrow->SetHiddenInGame(false);
+
 	// Configure character movement
 	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f); // ...at this rotation rate
@@ -95,7 +103,6 @@ AJanitorCharacter::AJanitorCharacter()
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 
 
-
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -104,25 +111,39 @@ AJanitorCharacter::AJanitorCharacter()
 void AJanitorCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
 	// Initialize all weapons
-	// Initialize marbles and attch them to the sockets
 	FActorSpawnParameters SpawnInfo;
-	const FTransform orientation_socket = GetMesh()->GetSocketTransform("Right_Hand_Weapon_Socket", ERelativeTransformSpace::RTS_World);
-	marbles = GetWorld()->SpawnActor<AMarbles>(AMarbles::StaticClass(), orientation_socket, SpawnInfo);
+	const FTransform orientation_socket_right_hand = GetMesh()->GetSocketTransform("Right_Hand_Weapon_Socket", ERelativeTransformSpace::RTS_World);
+	const FTransform orientation_socket_left_hand = GetMesh()->GetSocketTransform("Left_Hand_Weapon_Socket", ERelativeTransformSpace::RTS_World);
+	const FTransform orientation_socket_left_belt = GetMesh()->GetSocketTransform("Pelvis_Belt_Socket_Left", ERelativeTransformSpace::RTS_World);
+	const FTransform orientation_socket_left_back = GetMesh()->GetSocketTransform("Clavicle_Left_Back_Socket", ERelativeTransformSpace::RTS_World);
+
+	// Initialize marbles and attch them to the sockets
+
+	marbles = GetWorld()->SpawnActor<AMarbles>(AMarbles::StaticClass(), orientation_socket_left_belt, SpawnInfo);
+	
 	CurrentRangedWeapon = marbles;
-	marbles->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "Pelvis_Belt_Socket_Left");
+	marbles->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepWorldTransform, "Pelvis_Belt_Socket_Left");
 
 	// initialize broom
-	broom = GetWorld()->SpawnActor<ABroom>(ABroom::StaticClass(), orientation_socket, SpawnInfo);
+	broom = GetWorld()->SpawnActor<ABroom>(ABroom::StaticClass(), orientation_socket_right_hand, SpawnInfo);
+	
 	CurrentMeleeWeapon = broom;
+	broom->AttachToComponent(this->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, "Right_Hand_Weapon_Socket");
+	FVector Offset = broom->GetActorLocation() + FVector(10,0,0);
 
 	// initialize skate
-	skate = GetWorld()->SpawnActor<ASkateboard>(ASkateboard::StaticClass(), orientation_socket, SpawnInfo);
+	skate = GetWorld()->SpawnActor<ASkateboard>(ASkateboard::StaticClass(), orientation_socket_left_back, SpawnInfo);
+	
+	skate->AttachToComponent(this->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, "Clavicle_Left_Back_Socket");
+	skate->GetMesh()->SetHiddenInGame(true);
 
 	// initialize watergun
-	watergun = GetWorld()->SpawnActor<AWatergun>(AWatergun::StaticClass(), orientation_socket, SpawnInfo);
+	watergun = GetWorld()->SpawnActor<AWatergun>(AWatergun::StaticClass(), orientation_socket_left_hand, SpawnInfo);
 
-	watergun->AttachToComponent(this->GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, "Left_Hand_Weapon_Socket");
+	watergun->AttachToComponent(this->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, "Left_Hand_Weapon_Socket");
 	watergun->GetMesh()->SetHiddenInGame(true);
+
+	//onAnimTierChanged.AddDynamic(this, &AJanitorCharacter::AnimTierChangeHandler);
 
 
 	// Set up gameplay key bindings
@@ -180,51 +201,28 @@ void AJanitorCharacter::OnResetVR()
 	//		Add "HeadMountedDisplay" to [YourProject].Build.cs PublicDependencyModuleNames in order to build successfully (appropriate if supporting VR).
 	// or:
 	//		Comment or delete the call to ResetOrientationAndPosition below (appropriate if not supporting VR)
-	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
+	//UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
 }
 
 void AJanitorCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	//check if the characer has belocity and set is moving to true if velocity is above 0
-	FVector xyz = this->GetVelocity();
-	float x = xyz.X;
-	float y = xyz.Y;
-	float z = xyz.Z;
-	if (x != 0.0f || y != 0.0f || z != 0.0f)
-	{
-		if (!IsMoving)
-			StartMoving();
-	}
-	else
-	{
-		if (IsMoving)
-			StopMoving();
-	}
+	IsMovingCheck();
+	IsMovementBeingInputCheck();
 	
 	// ismovingonground checks if the character is touching the floor, is moving if it's moving
+	// TODO:this makes no sense, the anim tier will be walking even if the char is stuck doing an animation
+	// TODO:figure out if this even needs to exist (spoiler prob not)
 	if (this->GetCharacterMovement()->IsMovingOnGround() && IsMoving && MovementIsBeingInput)
 	{
-		if (CurrentAnimTier != AnimationTier::Walking)
-			CurrentAnimTier = AnimationTier::Walking;
-	}
-
-	if (WKeyPressed || SKeyPressed || AKeyPressed || DKeyPressed || JumpPressed)
-	{
-		MovementIsBeingInput = true;
-		if (CurrentAnimTier == AnimationTier::Taunting)
-		{
-			CancelCheck(AnimationTier::Taunting);
-		}
-	}
-	else
-	{
-		MovementIsBeingInput = false;
+		if (CurrentAnimTier != AnimationTier::Moving)
+			CurrentAnimTier = AnimationTier::Moving;
 	}
 
 	if (CurrentRangedWeapon == marbles)
 	{
+		// TODO: change this to not be in tick, only check before marble is thrown (perhaps move it to marble class itself)
 		if (IsLockedOn)
 			marbles->ProjectileTransform = LockOnArrow->GetComponentTransform();
 		else
@@ -335,29 +333,34 @@ void AJanitorCharacter::DoubleJump()
 
 void AJanitorCharacter::TauntAction()
 {
-
+	
 	StartTaunting();
 
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("Taunt Action"));
 	if (TauntMontage) 
 	{
-		PlayAnimMontage(TauntMontage, 1,NAME_None);
+		this->PlayAnimMontage(TauntMontage, 1,NAME_None);
+
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, FString::Printf(TEXT("Animation Length: %f"), this->GetCurrentMontage()->GetPlayLength()));
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, FString::Printf(TEXT("Animation Length: %f"), this->GetCurrentMontage()->GetPlayLength()));
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, FString::Printf(TEXT("Animation Length: %f"), this->GetCurrentMontage()->GetPlayLength()));
 	}
 	
 
-	//USkeletalMeshComponent* MeshComponent = this->FindComponentByClass<USkeletalMeshComponent>();
-	//if (MeshComponent)
-	//{
-	//	UAnimInstance* AnimInst = MeshComponent->GetAnimInstance();
-	//	if (AnimInst)
-	//	{
-	//		MeshComponent->PlayAnimation(AnimSequence, false);
-	//		float animLen = MeshComponent->GetSingleNodeInstance()->GetLength();
-	//		animLen -= 0.34f;
-	//		GetWorldTimerManager().SetTimer(PostAnimTimerHandle, this, &AJanitorCharacter::PostAnimFunc, animLen, false);
-	//	}
-	//}
-	//return;
+	/*
+	USkeletalMeshComponent* MeshComponent = this->FindComponentByClass<USkeletalMeshComponent>();
+	if (MeshComponent)
+	{
+		UAnimInstance* AnimInst = MeshComponent->GetAnimInstance();
+		if (AnimInst)
+		{
+			MeshComponent->PlayAnimation(AnimSequence, false);
+			float animLen = MeshComponent->GetSingleNodeInstance()->GetLength();
+			animLen -= 0.34f;
+			GetWorldTimerManager().SetTimer(PostAnimTimerHandle, this, &AJanitorCharacter::PostAnimFunc, animLen, false);
+		}
+	}
+	return;*/
 }
 
 void AJanitorCharacter::PostAnimFunc() 
@@ -378,7 +381,7 @@ bool AJanitorCharacter::CancelCheck(AnimationTier AT)
 {
 
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("cancelcheck function called"));
-	if (CurrentAnimTier == AnimationTier::Taunting && AT == AnimationTier::Walking)
+	if (CurrentAnimTier == AnimationTier::Taunting && AT == AnimationTier::Moving)
 	{
 		Cancel();
 		return true;
@@ -407,45 +410,14 @@ void AJanitorCharacter::Attack()
 	}
 	else
 	{
-		if (!IsLockedOn)
+		if (CurrentAnimTier < AnimationTier::Attacking)
 		{
-			if (!IsAirborne)
-				CurrentMeleeWeapon->Attack();
-			else CurrentMeleeWeapon->AerialAttack();
+			CurrentMeleeWeapon->DoAttack(GetDirection());
 		}
 		else
 		{
-			FString Direction = GetDirection();
-			if (Direction == "front")
-			{
-				if (!IsAirborne)
-					CurrentMeleeWeapon->ForwardAttack();
-				else CurrentMeleeWeapon->AerialForwardAttack();
-			}
-			else if (Direction == "back")
-			{
-				if (!IsAirborne)
-					CurrentMeleeWeapon->BackwardAttack();
-				else CurrentMeleeWeapon->AerialBackwardAttack();
-			}
-			else if (Direction == "left")
-			{
-				if (!IsAirborne)
-					CurrentMeleeWeapon->LeftwardAttack();
-				else CurrentMeleeWeapon->AerialLeftwardAttack();
-			}
-			else if (Direction == "right")
-			{
-				if (!IsAirborne)
-					CurrentMeleeWeapon->RightwardAttack();
-				else CurrentMeleeWeapon->AerialRightwardAttack();
-			}
-			else
-			{
-				if (!IsAirborne)
-					CurrentMeleeWeapon->Attack();
-				else CurrentMeleeWeapon->AerialAttack();
-			}
+			bufferedDirection = GetDirection();
+			bufferedAttack = CurrentMeleeWeapon->DoAttack(bufferedDirection);
 		}
 	}
 	StopAttacking();
@@ -460,47 +432,24 @@ void AJanitorCharacter::RangedAttack()
 	}
 	else
 	{
-		if (!IsLockedOn)
+		StartAttacking();
+		if (TauntModeState == TauntState::Taunt)
 		{
-			if (!IsAirborne)
-				CurrentRangedWeapon->Attack();
-			else CurrentRangedWeapon->AerialAttack();
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("Attack taunt mode"));
 		}
 		else
 		{
-			FString Direction = GetDirection();
-			if (Direction == "front")
+			if (CurrentAnimTier < AnimationTier::Attacking)
 			{
-				if (!IsAirborne)
-					CurrentRangedWeapon->ForwardAttack();
-				else CurrentRangedWeapon->AerialForwardAttack();
-			}
-			else if (Direction == "back")
-			{
-				if (!IsAirborne)
-					CurrentRangedWeapon->BackwardAttack();
-				else CurrentRangedWeapon->AerialBackwardAttack();
-			}
-			else if (Direction == "left")
-			{
-				if (!IsAirborne)
-					CurrentRangedWeapon->LeftwardAttack();
-				else CurrentRangedWeapon->AerialLeftwardAttack();
-
-			}
-			else if (Direction == "right")
-			{
-				if (!IsAirborne)
-					CurrentRangedWeapon->RightwardAttack();
-				else CurrentRangedWeapon->AerialRightwardAttack();
+				CurrentRangedWeapon->DoAttack(GetDirection());
 			}
 			else
 			{
-				if (!IsAirborne)
-					CurrentRangedWeapon->Attack();
-				else CurrentRangedWeapon->AerialAttack();
+				bufferedDirection = GetDirection();
+				bufferedAttack = CurrentRangedWeapon->DoAttack(bufferedDirection);
 			}
 		}
+		StopAttacking();
 	}
 	StopAttacking();
 }
@@ -514,104 +463,43 @@ void AJanitorCharacter::ModeAttack()
 	}
 	else
 	{
-		if (!IsLockedOn)
+		if (AttackModeState == ModeState::Melee)
 		{
-			if (AttackModeState == ModeState::Ranged)
+			if (CurrentAnimTier < AnimationTier::Attacking)
 			{
-				if (!IsAirborne)
-					CurrentRangedWeapon->ModeAttack();
-				else CurrentRangedWeapon->ModeAerialAttack();
+				CurrentMeleeWeapon->DoModeAttack(GetDirection());
 			}
 			else
 			{
-				if (!IsAirborne)
-					CurrentMeleeWeapon->ModeAttack();
-				else CurrentMeleeWeapon->ModeAerialAttack();
+				bufferedDirection = GetDirection();
+				bufferedAttack = CurrentMeleeWeapon->DoModeAttack(bufferedDirection);
 			}
 		}
 		else
 		{
-			FString Direction = GetDirection();
-			if (Direction == "front")
+			if (CurrentAnimTier < AnimationTier::Attacking)
 			{
-				if (AttackModeState == ModeState::Ranged)
-				{
-					if (!IsAirborne)
-						CurrentRangedWeapon->ModeForwardAttack();
-					else CurrentRangedWeapon->ModeAerialForwardAttack();
-				}
-				else
-				{
-					if (!IsAirborne)
-						CurrentMeleeWeapon->ModeForwardAttack();
-					else CurrentMeleeWeapon->ModeAerialForwardAttack();
-				}
-			}
-			else if (Direction == "back")
-			{
-				if (AttackModeState == ModeState::Ranged)
-				{
-					if (!IsAirborne)
-						CurrentRangedWeapon->ModeBackwardAttack();
-					else CurrentRangedWeapon->ModeAerialBackwardAttack();
-				}
-				else
-				{
-					if (!IsAirborne)
-						CurrentMeleeWeapon->ModeBackwardAttack();
-					else CurrentMeleeWeapon->ModeAerialBackwardAttack();
-				}
-			}
-			else if (Direction == "left")
-			{
-				if (AttackModeState == ModeState::Ranged)
-				{
-					if (!IsAirborne)
-						CurrentRangedWeapon->ModeLeftwardAttack();
-					else CurrentRangedWeapon->ModeAerialLeftwardAttack();
-				}
-				else
-				{
-					if (!IsAirborne)
-						CurrentMeleeWeapon->ModeLeftwardAttack();
-					else CurrentMeleeWeapon->ModeAerialLeftwardAttack();
-				}
-			}
-			else if (Direction == "right")
-			{
-				if (AttackModeState == ModeState::Ranged)
-				{
-					if (!IsAirborne)
-						CurrentRangedWeapon->ModeRightwardAttack();
-					else CurrentRangedWeapon->ModeAerialRightwardAttack();
-				}
-				else
-				{
-					if (!IsAirborne)
-						CurrentMeleeWeapon->ModeRightwardAttack();
-					else CurrentMeleeWeapon->ModeAerialRightwardAttack();
-				}
+				CurrentRangedWeapon->DoModeAttack(GetDirection());
 			}
 			else
 			{
-				if (AttackModeState == ModeState::Ranged)
-				{
-					if (!IsAirborne)
-						CurrentRangedWeapon->ModeAttack();
-					else CurrentRangedWeapon->ModeAerialAttack();
-				}
-				else
-				{
-					if (!IsAirborne)
-						CurrentMeleeWeapon->ModeAttack();
-					else CurrentMeleeWeapon->ModeAerialAttack();
-				}
+				bufferedDirection = GetDirection();
+				bufferedAttack = CurrentRangedWeapon->DoModeAttack(bufferedDirection);
 			}
 		}
 	}
 	StopAttacking();
 }
 
+void AJanitorCharacter::DoBufferedAttack()
+{
+	if (bufferedAttack && CurrentAnimTier < AnimationTier::Attacking)
+		bufferedAttack(bufferedDirection);
+}
+
+void AJanitorCharacter::AnimTierChangeHandler()
+{
+}
 
 void AJanitorCharacter::StartAttacking()
 {
@@ -655,6 +543,37 @@ void AJanitorCharacter::StopMoving()
 	IsMoving = false;
 }
 
+void AJanitorCharacter::IsMovingCheck()
+{
+	//check if the characer has belocity and set is moving to true if velocity is above 0
+	if (!this->GetVelocity().IsZero())
+	{
+		if (!IsMoving)
+			IsMoving = true;
+	}
+	else
+	{
+		if (IsMoving)
+			IsMoving = false;
+	}
+}
+
+void AJanitorCharacter::IsMovementBeingInputCheck()
+{
+	if (WKeyPressed || SKeyPressed || AKeyPressed || DKeyPressed || JumpPressed)
+	{
+		MovementIsBeingInput = true;
+		if (CurrentAnimTier == AnimationTier::Taunting)
+		{
+			CancelCheck(AnimationTier::Taunting);
+		}
+	}
+	else
+	{
+		MovementIsBeingInput = false;
+	}
+}
+
 void AJanitorCharacter::StartInvulnerable() 
 {
 	IsInvulnerable = true;
@@ -665,7 +584,7 @@ void AJanitorCharacter::StopInvulnerable()
 	IsInvulnerable = false;
 }
 
-FString AJanitorCharacter::GetDirection()
+DirectionENUM AJanitorCharacter::GetDirection()
 {
 	// Gets the precise angle between the player and the enemy to determine the directional input that needs to be held to do certain attacks/actions
 	FRotator ArrowRotation;
@@ -707,48 +626,100 @@ FString AJanitorCharacter::GetDirection()
 	if ((Yaw >= 315 && Yaw <= 360) || (Yaw <= 45 && Yaw >= 0))
 	{
 		if (WKeyPressed)
-			return "front";
+			return DirectionENUM::Front;
 		else if (SKeyPressed)
-			return "back";
+			return DirectionENUM::Back;
 		else if (AKeyPressed)
-			return "left";
+			return DirectionENUM::Left;
 		else if (DKeyPressed)
-			return "right";
+			return DirectionENUM::Right;
 	}
 	else if (Yaw > 45 && Yaw <= 135)
 	{
 		if (WKeyPressed)
-			return "right";
+			return DirectionENUM::Right;
 		else if (SKeyPressed)
-			return "left";
+			return DirectionENUM::Left;
 		else if (AKeyPressed)
-			return "front";
+			return DirectionENUM::Front;
 		else if (DKeyPressed)
-			return "back";
+			return DirectionENUM::Back;
 	}
 	else if (Yaw > 135 && Yaw <= 225)
 	{
 		if (WKeyPressed)
-			return "back";
+			return DirectionENUM::Back;
 		else if (SKeyPressed)
-			return "front";
+			return DirectionENUM::Front;
 		else if (AKeyPressed)
-			return "left";
+			return DirectionENUM::Left;
 		else if (DKeyPressed)
-			return "right";
+			return DirectionENUM::Right;
 	}
 	else
 	{
 		if (WKeyPressed)
-			return "left";
+			return DirectionENUM::Left;
 		else if (SKeyPressed)
-			return "right";
+			return DirectionENUM::Right;
 		else if (AKeyPressed)
-			return "back";
+			return DirectionENUM::Back;
 		else if (DKeyPressed)
-			return "front";
+			return DirectionENUM::Front;
 	}
-	return "0";
+	return DirectionENUM::NoDirection;
+}
+
+void AJanitorCharacter::UpdateDirectionArrow(FVector Direction)
+{
+	// Direction arrow is used to see where the character is moving (or is going to move after an animation).
+
+	DirectionArrow->SetWorldRotation(FRotator(0, Controller->GetControlRotation().Yaw, 0));
+
+	int x = 0;
+	int y = 0;
+	int angle = 0;
+
+	if (WKeyPressed)
+		y += 1;
+	if (SKeyPressed)
+		y -= 1;
+	if (AKeyPressed)
+		x -= 1;
+	if (DKeyPressed)
+		x += 1;
+
+	if (x != 0 && y != 0)
+	{
+		if (x == 1 && y == 1)
+			angle = 45;
+		else if (x == 1 && y == -1)
+			angle = 135;
+		else if (x == -1 && y == 1)
+			angle = 315;
+		else
+			angle = 225;
+	}
+	else
+	{
+		if (x == 1)
+			angle = 90;
+		else if (x == -1)
+			angle = 270;
+		else if (y == 1)
+			angle = 0;
+		else
+			angle = 180;
+	}
+	
+	if (x == 0 && y == 0)
+	{
+		if (IsLockedOn)
+			DirectionArrow->SetWorldRotation(LockOnArrow->GetRelativeRotation());
+		else
+			DirectionArrow->SetWorldRotation(FollowArrow->GetRelativeRotation());
+	}
+	DirectionArrow->AddWorldRotation(FRotator(0, angle, 0));
 }
 
 void AJanitorCharacter::LockOn()
@@ -809,18 +780,8 @@ void AJanitorCharacter::MoveForward(float Value)
 		// get forward vector
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 		AddMovementInput(Direction, Value);
-	}
-}
 
-void AJanitorCharacter::ChangeStyle()
-{
-	if (AttackModeState == ModeState::Ranged)
-	{
-		AttackModeState = ModeState::Melee;
-	}
-	else
-	{
-		AttackModeState = ModeState::Ranged;
+		UpdateDirectionArrow(Direction);
 	}
 }
 
@@ -837,6 +798,20 @@ void AJanitorCharacter::MoveRight(float Value)
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		// add movement in that direction
 		AddMovementInput(Direction, Value);
+
+		UpdateDirectionArrow(Direction);
+	}
+}
+
+void AJanitorCharacter::ChangeStyle()
+{
+	if (AttackModeState == ModeState::Ranged)
+	{
+		AttackModeState = ModeState::Melee;
+	}
+	else
+	{
+		AttackModeState = ModeState::Ranged;
 	}
 }
 
@@ -877,6 +852,16 @@ void AJanitorCharacter::WeaponBeingHeldChangeRanged()
 
 }
 
+bool AJanitorCharacter::GetIsLockedOn()
+{
+	return IsLockedOn;
+}
+
+bool AJanitorCharacter::GetIsAirborne()
+{
+	return IsAirborne;
+}
+
 void AJanitorCharacter::SwapWatergun()
 {
 	if (CurrentRangedWeapon != watergun)
@@ -890,7 +875,9 @@ void AJanitorCharacter::SwapBroom()
 {
 	if (CurrentMeleeWeapon != broom)
 	{
+		CurrentMeleeWeapon->GetMesh()->SetHiddenInGame(true);
 		CurrentMeleeWeapon = broom;
+		CurrentMeleeWeapon->GetMesh()->SetHiddenInGame(false);
 	}
 }
 void AJanitorCharacter::SwapMarbles()
@@ -907,7 +894,9 @@ void AJanitorCharacter::SwapSkateboard()
 {
 	if (CurrentMeleeWeapon != skate)
 	{
+		CurrentMeleeWeapon->GetMesh()->SetHiddenInGame(true);
 		CurrentMeleeWeapon = skate;
+		CurrentMeleeWeapon->GetMesh()->SetHiddenInGame(false);
 	}
 }
 

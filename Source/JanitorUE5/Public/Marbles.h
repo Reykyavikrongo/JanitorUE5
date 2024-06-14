@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "WeaponClass.h"
+#include "WeaponClassBufferImplementor.h"
 #include "GameFramework/Character.h"
 #include "MarbleTeleport.h"
 #include "Marbles.generated.h"
 
 UCLASS()
-class JANITORUE5_API AMarbles : public AActor, public IWeaponClass
+class JANITORUE5_API AMarbles : public AWeaponClassBufferImplementor//public AActor, public IWeaponClass
 {
 	GENERATED_BODY()
 	

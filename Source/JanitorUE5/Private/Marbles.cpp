@@ -3,10 +3,12 @@
 
 #include "Marbles.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
+#include "JanitorCharacter.h"
 
 // Sets default values
 AMarbles::AMarbles()
 {
+	janitor = Cast<AJanitorCharacter>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -22,7 +24,9 @@ AMarbles::AMarbles()
 	}
 
 	MarblesMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	
+	MarblesMesh->AddRelativeLocation(FVector(-6.0, -10.0, 2));
+	MarblesMesh->AddRelativeRotation(FRotator(105.0, 30.0, 180.0));
+	MarblesMesh->SetWorldScale3D(FVector(0.4, 0.4, 0.4));
 }	
 
 // Called when the game starts or when spawned

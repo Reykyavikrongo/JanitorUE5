@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "WeaponClass.h"
+#include "WeaponClassBufferImplementor.h"
 #include "Watergun.generated.h"
 
 UCLASS()
-class JANITORUE5_API AWatergun : public AActor, public IWeaponClass
+class JANITORUE5_API AWatergun : public AWeaponClassBufferImplementor//public AActor, public IWeaponClass
 {
 	GENERATED_BODY()
 	

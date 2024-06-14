@@ -5,43 +5,18 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "LockOnablePawn.h"
-#include "WeaponClass.h"
+#include "WeaponClassBufferImplementor.h"
 #include "Marbles.h"
 #include "Broom.h"
 #include "Watergun.h"
 #include "Skateboard.h"
 #include "BasicEnemy.h"
+#include "ENUMS.h"
 #include "Blueprint/UserWidget.h"
 //#include "Kismet/KismetSystemLibrary.h"
 #include "JanitorCharacter.generated.h"
 
-// ModeState will dictate which move is used based on the current state
-UENUM(BlueprintType)
-enum class ModeState : uint8{
-	Ranged,
-	Melee
-};
-
-UENUM(BlueprintType)
-enum class TauntState : uint8 {
-	Taunt,
-	NotTaunt
-};
-
-// determines the priority of actions that will take place, used for animation cancels and whatnot
-UENUM(BlueprintType)
-enum class AnimationTier : uint8 {
-	// Tiers are ordered based on their priority, in this case Idle is smallest in terms of priority and uncancelable (if there will ever be anything that is uncancelable) is the most important.
-	Idle UMETA(DisplayName = "Idle"),
-	Walking UMETA(DisplayName = "Walking"),
-	Taunting UMETA(DisplayName = "Taunting"),
-	Dodging UMETA(DisplayName = "Dodging"),
-	Attacking UMETA(DisplayName = "Attacking"),
-	JumpCancel UMETA(DisplayName = "JumpCancel"),
-	Hit UMETA(DisplayName = "Hit"),
-	OmniCancel UMETA(DisplayName = "OmniCancel"),
-	Uncancelable UMETA(DisplayName = "Uncancelable")
-};
+//DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnimTierChanged, AnimationTier, NewValue);
 
 UCLASS()
 class AJanitorCharacter : public ACharacter
@@ -81,6 +56,10 @@ class AJanitorCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Arrow, meta = (AllowPrivateAccess = "true"))
 	class UArrowComponent* FollowArrow;
 
+	/** Direction arrow that will always be facing the direction of movement being input*/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Arrow, meta = (AllowPrivateAccess = "true"))
+	class UArrowComponent* DirectionArrow;
+
 
 	// Keeps track of how many enemies are inside the player vision sphere component
 	int LockOnQuantity;
@@ -102,28 +81,37 @@ class AJanitorCharacter : public ACharacter
 	// is jump being held at the moment
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = CharacterState, meta = (AllowPrivateAccess = "true"))
 	bool JumpPressed = false;
-
 	
 	 
 	// Keeps track of which enemy is being locked on to currently
 	int LockOnIndex;
-	// Keeps track of which directional input is being held at the moment, used to determine which attack will be used
+	// Keeps track of which directional input is being held at the moment, used to determine which attack will be used and which direction character is going to launch an attack/move
 	bool WKeyPressed, AKeyPressed, SKeyPressed, DKeyPressed = false;
 
 	
 	
 
 	// Pointers to current renged and melee weapons
+	//OLD IMPLEMENTATION
+	/*
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = RangedWeapon, meta = (AllowPrivateAccess = "true"))
 	TScriptInterface<IWeaponClass> CurrentRangedWeapon;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = MeleeWeapon, meta = (AllowPrivateAccess = "true"))
-	TScriptInterface<IWeaponClass> CurrentMeleeWeapon;
+	TScriptInterface<IWeaponClass> CurrentMeleeWeapon; */
+
+	AWeaponClassBufferImplementor* CurrentRangedWeapon;
+	AWeaponClassBufferImplementor* CurrentMeleeWeapon;
 
 	// define the variables for each weapon
 	AMarbles* marbles;
 	ABroom* broom;
 	ASkateboard* skate;
 	AWatergun* watergun;
+
+	//function pointer to buffered attack
+	// TODO: Find a way to implement this without having to change all the current logic in Attack() funcitons
+	BufferedAttack bufferedAttack;
+	DirectionENUM bufferedDirection;
 
 	//timer
 	FTimerManager PostAnimTimerHandle;
@@ -162,10 +150,12 @@ public:
 	//Deprecated, now being implemented with the blueprint editor for convenience and ease (fuck C++ animating)
 	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
 	//UAnimSequence* AnimSequence;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
+	UAnimInstance* AnimInst;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
 	UAnimMontage* TauntMontage;
-
 
 	//Used to get the current montage that is being used. Used to cancel animations and stuff
 	UPROPERTY(VisibleAnywhere, BlueprintType, Category = Animations)
@@ -176,6 +166,14 @@ public:
 	int JumpCounter = 0;
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	int MaxNOfJumps = 2;
+
+	// combo counter, used to iterate through animations
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int ComboCounter = 0;
+
+	// getVariables
+	bool GetIsLockedOn();
+	bool GetIsAirborne();
 
 protected:
 
@@ -206,19 +204,23 @@ protected:
 	void StopAttacking();
 	void StartDodging();
 	void StopDodging();
-	void StartMoving();
-	void StopMoving();
+	void IsMovingCheck();
+	void IsMovementBeingInputCheck();
 	void StartTaunting();
 	void StopTaunting();
 	void StartInvulnerable();
 	void StopInvulnerable();
 
+	// deprecated, not used for anything for now (isMovingCheck() is now used)
+	void StartMoving();
+	void StopMoving();
 
 	/** Called when weapons are changed and the weapon being held has to be updated (either make the one that was 
 	being used invisible, which would be easier then the alternative of de-attaching it and attaching a new one.) */
 
 	void WeaponBeingHeldChangeMelee();
 	void WeaponBeingHeldChangeRanged();
+
 
 	/**
 	 * Called via input to turn look up/down at a given rate.
@@ -236,6 +238,10 @@ protected:
 	void Attack();
 	void RangedAttack();
 	void ModeAttack();
+	void DoBufferedAttack();
+	void AnimTierChangeHandler();
+	//FOnAnimTierChanged onAnimTierChanged;
+
 	void ChangeStyle();
 
 	void LockOn();
@@ -273,7 +279,11 @@ protected:
 	//Handle all the operations when character gets hit
 	void GotHit();
 
-	FString GetDirection();
+	// determines which attack is going to be used depending on character, camera and enemy position
+	DirectionENUM GetDirection();
+
+	// direction arrow used for reversals and inertia transfer, this updates the direction arrow to the correct orientation depending on inputs.
+	void UpdateDirectionArrow(FVector Direction);
 
 protected:
 	// APawn interface

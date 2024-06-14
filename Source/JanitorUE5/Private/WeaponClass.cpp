@@ -3,6 +3,7 @@
 
 #include "WeaponClass.h"
 
+
 // Add default functionality here for any IWeaponClass functions that are not pure virtual.
 void IWeaponClass::Attack()
 {
@@ -107,4 +108,14 @@ void IWeaponClass::ModeAerialRightwardAttack()
 UStaticMeshComponent* IWeaponClass::GetMesh()
 {
 	return 0;
+}
+
+BufferedAttack IWeaponClass::DoAttack(DirectionENUM Direction)
+{
+	return nullptr;
+}
+
+BufferedAttack IWeaponClass::DoModeAttack(DirectionENUM Direction)
+{
+	return nullptr;
 }
