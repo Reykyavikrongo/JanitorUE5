@@ -3,6 +3,8 @@
 
 #include "Marbles.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
+#include "Components/ArrowComponent.h"
+#include "Components/SceneComponent.h"
 #include "JanitorCharacter.h"
 
 // Sets default values
@@ -73,6 +75,11 @@ void AMarbles::ModeAttack()
 		FRotator Rotation;
 		FActorSpawnParameters SpawnInfo;
 		// forward teleport marble gets shot out
+
+		if (janitor->GetIsLockedOn())
+			ProjectileTransform = janitor->getLockOnArrow()->GetComponentTransform();
+		else
+			ProjectileTransform = janitor->getFollowArrow()->GetComponentTransform();
 		
 		TeleportMarble = GetWorld()->SpawnActor<AMarbleTeleport>(AMarbleTeleport::StaticClass(), ProjectileTransform, SpawnInfo);
 		

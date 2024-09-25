@@ -16,7 +16,4 @@ class JANITORUE5_API UComboEndNotify : public UAnimNotify
 
 	virtual void Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 
-	UPROPERTY(EditAnywhere)
-	bool bIsActive = true;
-
 };

@@ -111,7 +111,7 @@ UStaticMeshComponent* AWeaponClassBufferImplementor::GetMesh()
 	return nullptr;
 }
 
-BufferedAttack AWeaponClassBufferImplementor::DoAttack(DirectionENUM Direction)
+void AWeaponClassBufferImplementor::DoAttack(DirectionENUM Direction)
 {
 	if (!janitor->GetIsLockedOn())
 	{
@@ -152,10 +152,9 @@ BufferedAttack AWeaponClassBufferImplementor::DoAttack(DirectionENUM Direction)
 			else AerialAttack();
 		}
 	}
-	return nullptr;
 }
 
-BufferedAttack AWeaponClassBufferImplementor::DoModeAttack(DirectionENUM Direction)
+void AWeaponClassBufferImplementor::DoModeAttack(DirectionENUM Direction)
 {
 	if (!janitor->GetIsLockedOn())
 	{
@@ -196,5 +195,9 @@ BufferedAttack AWeaponClassBufferImplementor::DoModeAttack(DirectionENUM Directi
 			else ModeAerialAttack();
 		}
 	}
-	return nullptr;
+}
+
+TArray<UHurtBox*> AWeaponClassBufferImplementor::GetHurtBoxArray()
+{
+	return m_HurtBoxArr;
 }

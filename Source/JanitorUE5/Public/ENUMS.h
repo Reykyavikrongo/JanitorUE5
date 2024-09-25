@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "UObject/ScriptDelegates.h"
 
 // ModeState will dictate which move is used based on the current state
 
@@ -27,6 +28,19 @@ enum class DirectionENUM : uint8 {
 	Right
 };
 
+// status effects
+UENUM(BlueprintType)
+enum class StatusEffect : uint8 {
+	Stagger,
+	AirStagger,
+	KnockBack,
+	KnockUp,
+	Pull,
+	KnockDown,
+	Fall,  // on the ground they fall to their knees then flat on the ground
+	KnockInPredeterminedDirection
+};
+
 // determines the priority of actions that will take place, used for animation cancels and whatnot
 UENUM(BlueprintType)
 enum class AnimationTier : uint8 {
@@ -42,10 +56,14 @@ enum class AnimationTier : uint8 {
 	Uncancelable UMETA(DisplayName = "Uncancelable")
 };
 
+
 /* this section is for 
 ALL typedef declarations*/
 // Function pointer that points to the function of the attack that will happen once the char stops being busy with another animation
-using BufferedAttack = void(*)(DirectionENUM Direction);
+
+//Ended up using delegates for this, delegates need to be declared before UCLASS() in a header file that inherits at least UObject to make the UE framework detect the declaration
+//using BufferedAttack = void(*)(DirectionENUM Direction);
+
 
 /**
  * 

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "WeaponClass.h"
+#include "HurtBox.h"
 #include "WeaponClassBufferImplementor.generated.h"
 
 class AJanitorCharacter;
@@ -25,6 +26,9 @@ protected:
 	virtual void BeginPlay() override;
 
 	AJanitorCharacter* janitor;
+
+    //UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
+    TArray<UHurtBox*> m_HurtBoxArr;
 
 public:	
 	// Called every frame
@@ -52,6 +56,10 @@ public:
     virtual void ModeAerialLeftwardAttack() override;
     virtual void ModeAerialRightwardAttack() override;
     virtual UStaticMeshComponent* GetMesh() override;
-    virtual BufferedAttack DoAttack(DirectionENUM Direction) override;
-    virtual BufferedAttack DoModeAttack(DirectionENUM Direction) override;
+    UFUNCTION()
+    virtual void DoAttack(DirectionENUM Direction) override;
+    UFUNCTION()
+    virtual void DoModeAttack(DirectionENUM Direction) override;
+
+    TArray<UHurtBox*> GetHurtBoxArray();
 };

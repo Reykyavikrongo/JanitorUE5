@@ -24,6 +24,11 @@ public:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
     UAnimMontage* FirstGroundAttackMontage;
+    
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
+    UHurtBox* m_HurtBoxBrush;
+
+
 
 protected:
 	// Called when the game starts or when spawned

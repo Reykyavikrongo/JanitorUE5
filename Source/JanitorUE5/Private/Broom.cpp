@@ -3,6 +3,7 @@
 
 #include "Broom.h"
 #include "Runtime/Engine/Classes/Kismet/GameplayStatics.h"
+#include "HurtBox.h"
 #include "JanitorCharacter.h"
 
 // Sets default values
@@ -35,6 +36,16 @@ ABroom::ABroom()
 	BroomMesh->AddRelativeRotation(FRotator(180.0, 0.0, 0.0));
 	BroomMesh->SetWorldScale3D(FVector(0.58, 0.58, 0.58));
 
+	m_HurtBoxBrush = CreateDefaultSubobject<UHurtBox>(TEXT("HurtBox"));
+	m_HurtBoxBrush->SetupAttachment(BroomMesh);
+	m_HurtBoxBrush->SetMobility(EComponentMobility::Movable);
+	m_HurtBoxBrush->SetHiddenInGame(false);
+	m_HurtBoxBrush->SetVisibility(true);
+	m_HurtBoxBrush->SetRelativeScale3D(FVector(0.8, 0.4, 2.5));
+	m_HurtBoxBrush->SetRelativeLocation(FVector(-1, 0, 70));
+
+	m_HurtBoxArr.Add(m_HurtBoxBrush);
+
 }
 
 // Called when the game starts or when spawned
@@ -59,6 +70,9 @@ void ABroom::Attack() {
 	if (FirstGroundAttackMontage)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("animation valid (broom)"));
+		m_HurtBoxBrush->SetStatusEffect(StatusEffect::KnockUp);
+		m_HurtBoxBrush->SetCanBeActivated(true);
+		m_HurtBoxBrush->SetAttackName("GroundBroom_1");
 		UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->PlayAnimMontage(FirstGroundAttackMontage, 1, NAME_None);
 	}
 	else

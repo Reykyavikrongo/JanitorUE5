@@ -12,11 +12,13 @@
 #include "Skateboard.h"
 #include "BasicEnemy.h"
 #include "ENUMS.h"
+#include "Delegates/Delegate.h"
 #include "Blueprint/UserWidget.h"
 //#include "Kismet/KismetSystemLibrary.h"
 #include "JanitorCharacter.generated.h"
 
-//DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnimTierChanged, AnimationTier, NewValue);
+
+DECLARE_DYNAMIC_DELEGATE_OneParam(FBufferedAttackDelegate, DirectionENUM, Direction);
 
 UCLASS()
 class AJanitorCharacter : public ACharacter
@@ -109,19 +111,25 @@ class AJanitorCharacter : public ACharacter
 	AWatergun* watergun;
 
 	//function pointer to buffered attack
-	// TODO: Find a way to implement this without having to change all the current logic in Attack() funcitons
-	BufferedAttack bufferedAttack;
 	DirectionENUM bufferedDirection;
+	FBufferedAttackDelegate bufferedAttackDelegate;
 
 	//timer
 	FTimerManager PostAnimTimerHandle;
+	
+	//Current tier of the animation, used to determine whether an animation is going to be overridden
+	UPROPERTY(VisibleAnywhere, Category = Animations)
+	AnimationTier CurrentAnimTier = AnimationTier::Idle;
 
 public:
 	AJanitorCharacter();
 
-	//Current tier of the animation, used to determine whether an animation is going to be overridden
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Animations)
-	AnimationTier CurrentAnimTier = AnimationTier::Idle;
+	UFUNCTION(BlueprintCallable)
+	AWeaponClassBufferImplementor* GetCurrentRangedWeapon();
+
+	UFUNCTION(BlueprintCallable)
+	AWeaponClassBufferImplementor* GetCurrentMeleeWeapon();
+
 
 	// Set the default state/style
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = RangedWeapon)
@@ -175,6 +183,11 @@ public:
 	bool GetIsLockedOn();
 	bool GetIsAirborne();
 
+	// get Arrows
+	UArrowComponent* getLockOnArrow();
+	UArrowComponent* getFollowArrow();
+	UArrowComponent* getDirectionArrow();
+
 protected:
 
 	/** Resets HMD orientation in VR. */
@@ -211,6 +224,8 @@ protected:
 	void StartInvulnerable();
 	void StopInvulnerable();
 
+	
+
 	// deprecated, not used for anything for now (isMovingCheck() is now used)
 	void StartMoving();
 	void StopMoving();
@@ -239,8 +254,8 @@ protected:
 	void RangedAttack();
 	void ModeAttack();
 	void DoBufferedAttack();
-	void AnimTierChangeHandler();
-	//FOnAnimTierChanged onAnimTierChanged;
+	UFUNCTION()
+	void AnimTierChangeHandler(AnimationTier CurrentAT, AnimationTier newAT);
 
 	void ChangeStyle();
 
@@ -293,6 +308,11 @@ protected:
 	void Landed(const FHitResult& HR) override;
 
 public:
+	// this should always be used to change CurrentAnimTier
+	void setCurrentAnimTier(AnimationTier newAnimTier);
+	UFUNCTION(BlueprintCallable)
+	AnimationTier getCurrentAnimTier();
+
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject **/

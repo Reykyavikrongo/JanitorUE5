@@ -110,12 +110,12 @@ UStaticMeshComponent* IWeaponClass::GetMesh()
 	return 0;
 }
 
-BufferedAttack IWeaponClass::DoAttack(DirectionENUM Direction)
+void IWeaponClass::DoAttack(DirectionENUM Direction)
 {
-	return nullptr;
+	return;
 }
 
-BufferedAttack IWeaponClass::DoModeAttack(DirectionENUM Direction)
+void IWeaponClass::DoModeAttack(DirectionENUM Direction)
 {
-	return nullptr;
+	return;
 }

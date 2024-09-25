@@ -16,8 +16,10 @@
 
 
 // TODO: broom attack needs anim notify states for hitboxes and animation ending because second or third attack isnt inputted.
-// TODO: figure out input buffering
 // TODO: make stinger animation(keep it simple), implement the movement
+// TODO: Change the AnimTier stuff to be fully triggered when an animation starts and stops and whatnot, will probably need anim notify classes to handle all that stuff (done for comboendnotify just need to do it on start anim notify)
+// TODO: Implement the anim tier system up to attacking tier, (that means idle, moving, taunting and attacking), attacking will al be handled through anim notifys, moving might be through tick unfortunately, taunting might need its own notifies
+// TODO: Buffering needs to be fixed, if lock on is let go after buffering a forward attack, it will perform a normal attack because its not locked on (change logic on attack activation or add a variable to the buffered attack function
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -69,7 +71,7 @@ AJanitorCharacter::AJanitorCharacter()
 	//DirectionArrow
 	DirectionArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("Direction Arrow"));
 	DirectionArrow->SetupAttachment(RootComponent);
-	DirectionArrow->SetHiddenInGame(false);
+	DirectionArrow->SetHiddenInGame(true); // overridden in BP
 
 	// Configure character movement
 	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
@@ -80,7 +82,7 @@ AJanitorCharacter::AJanitorCharacter()
 	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(LockOnSphere);
-	CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character	
+	CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character
 	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
 
 	// Create a camera boom for when player locks on to enemy
@@ -103,6 +105,16 @@ AJanitorCharacter::AJanitorCharacter()
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 
 
+}
+
+AWeaponClassBufferImplementor* AJanitorCharacter::GetCurrentRangedWeapon()
+{
+	return CurrentRangedWeapon;
+}
+
+AWeaponClassBufferImplementor* AJanitorCharacter::GetCurrentMeleeWeapon()
+{
+	return CurrentMeleeWeapon;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -143,7 +155,7 @@ void AJanitorCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerI
 	watergun->AttachToComponent(this->GetMesh(), FAttachmentTransformRules::KeepWorldTransform, "Left_Hand_Weapon_Socket");
 	watergun->GetMesh()->SetHiddenInGame(true);
 
-	//onAnimTierChanged.AddDynamic(this, &AJanitorCharacter::AnimTierChangeHandler);
+	
 
 
 	// Set up gameplay key bindings
@@ -213,20 +225,11 @@ void AJanitorCharacter::Tick(float DeltaTime)
 	
 	// ismovingonground checks if the character is touching the floor, is moving if it's moving
 	// TODO:this makes no sense, the anim tier will be walking even if the char is stuck doing an animation
-	// TODO:figure out if this even needs to exist (spoiler prob not)
+	// TODO:figure out if this even needs to exist (spoiler prob not) 
 	if (this->GetCharacterMovement()->IsMovingOnGround() && IsMoving && MovementIsBeingInput)
 	{
-		if (CurrentAnimTier != AnimationTier::Moving)
-			CurrentAnimTier = AnimationTier::Moving;
-	}
-
-	if (CurrentRangedWeapon == marbles)
-	{
-		// TODO: change this to not be in tick, only check before marble is thrown (perhaps move it to marble class itself)
-		if (IsLockedOn)
-			marbles->ProjectileTransform = LockOnArrow->GetComponentTransform();
-		else
-			marbles->ProjectileTransform = FollowArrow->GetComponentTransform();
+		//if (CancelCheck(AnimationTier::Moving))
+			//CurrentAnimTier = AnimationTier::Moving;
 	}
 		
 
@@ -370,13 +373,32 @@ void AJanitorCharacter::PostAnimFunc()
 
 void AJanitorCharacter::Cancel()
 {
+	// TODO: needs a cancel animation or smth (if its jump cancel)
 	this->StopAnimMontage(this->GetCurrentMontage());
+	
+	ComboCounter = 0;
+	// TODO: this needs to be moved to a seperate file because the functionality is repeated in HurtBoxAnimNotify as well.
+	TArray<UHurtBox*> meleeAndRangedArray;
+	meleeAndRangedArray.Append(GetCurrentMeleeWeapon()->GetHurtBoxArray());
+	meleeAndRangedArray.Append(GetCurrentRangedWeapon()->GetHurtBoxArray());
+	for (int i = 0; i < meleeAndRangedArray.Num(); ++i)
+	{
+		if (meleeAndRangedArray.IsValidIndex(i))
+		{
+			meleeAndRangedArray[i]->SetActive(false);
+			meleeAndRangedArray[i]->SetCanBeActivated(false);
+		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("MeleeAndRangedArray is empty"));
+		}
+	}
 
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("Cancel function called"));
 	//called in blueprints to change animations that are currently running
 }
 
-//returns if the called action takes precedent over the current action
+//returns true if the called action takes precedent over the current action
 bool AJanitorCharacter::CancelCheck(AnimationTier AT)
 {
 
@@ -386,7 +408,7 @@ bool AJanitorCharacter::CancelCheck(AnimationTier AT)
 		Cancel();
 		return true;
 	}
-	if (AT < CurrentAnimTier)
+	if (AT <= CurrentAnimTier)
 	{
 		return false;
 	}
@@ -403,60 +425,63 @@ void GotHit()
 
 void AJanitorCharacter::Attack()
 {
-	StartAttacking();
+	//StartAttacking();
 	if (TauntModeState == TauntState::Taunt)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("Attack taunt mode"));
 	}
 	else
 	{
-		if (CurrentAnimTier < AnimationTier::Attacking)
+		if (CancelCheck(AnimationTier::Attacking))
 		{
+			CurrentAnimTier = AnimationTier::Attacking;
 			CurrentMeleeWeapon->DoAttack(GetDirection());
 		}
 		else
 		{
 			bufferedDirection = GetDirection();
-			bufferedAttack = CurrentMeleeWeapon->DoAttack(bufferedDirection);
+			//bufferedAttack = CurrentMeleeWeapon->DoAttack(bufferedDirection);
+			bufferedAttackDelegate.BindUFunction(CurrentMeleeWeapon, "DoAttack");
 		}
 	}
-	StopAttacking();
+	//StopAttacking();
 }
 
 void AJanitorCharacter::RangedAttack()
 {
-	StartAttacking();
+	//StartAttacking();
 	if (TauntModeState == TauntState::Taunt)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("Ranged Attack Taunt mode"));
 	}
 	else
 	{
-		StartAttacking();
+		//StartAttacking();
 		if (TauntModeState == TauntState::Taunt)
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("Attack taunt mode"));
 		}
 		else
 		{
-			if (CurrentAnimTier < AnimationTier::Attacking)
+			if (CancelCheck(AnimationTier::Attacking))
 			{
 				CurrentRangedWeapon->DoAttack(GetDirection());
 			}
 			else
 			{
 				bufferedDirection = GetDirection();
-				bufferedAttack = CurrentRangedWeapon->DoAttack(bufferedDirection);
+				bufferedAttackDelegate.BindUFunction(CurrentMeleeWeapon, "DoAttack");
+				//bufferedAttack = CurrentRangedWeapon->DoAttack(bufferedDirection);
 			}
 		}
-		StopAttacking();
+		//StopAttacking();
 	}
-	StopAttacking();
+	//StopAttacking();
 }
 
 void AJanitorCharacter::ModeAttack()
 {
-	StartAttacking();
+	//StartAttacking();
 	if (TauntModeState == TauntState::Taunt)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("Mode Attack Taunt Mode"));
@@ -465,40 +490,52 @@ void AJanitorCharacter::ModeAttack()
 	{
 		if (AttackModeState == ModeState::Melee)
 		{
-			if (CurrentAnimTier < AnimationTier::Attacking)
+			if (CancelCheck(AnimationTier::Attacking))
 			{
 				CurrentMeleeWeapon->DoModeAttack(GetDirection());
 			}
 			else
 			{
 				bufferedDirection = GetDirection();
-				bufferedAttack = CurrentMeleeWeapon->DoModeAttack(bufferedDirection);
+				bufferedAttackDelegate.BindUFunction(CurrentMeleeWeapon, "DoModeAttack");
+				//bufferedAttack = CurrentMeleeWeapon->DoModeAttack(bufferedDirection);
 			}
 		}
 		else
 		{
-			if (CurrentAnimTier < AnimationTier::Attacking)
+			if (CancelCheck(AnimationTier::Attacking))
 			{
 				CurrentRangedWeapon->DoModeAttack(GetDirection());
 			}
 			else
 			{
 				bufferedDirection = GetDirection();
-				bufferedAttack = CurrentRangedWeapon->DoModeAttack(bufferedDirection);
+				bufferedAttackDelegate.BindUFunction(CurrentMeleeWeapon, "DoModeAttack");
+				//bufferedAttack = CurrentRangedWeapon->DoModeAttack(bufferedDirection);
 			}
 		}
 	}
-	StopAttacking();
+	//StopAttacking();
 }
 
 void AJanitorCharacter::DoBufferedAttack()
 {
-	if (bufferedAttack && CurrentAnimTier < AnimationTier::Attacking)
-		bufferedAttack(bufferedDirection);
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("DoBufferedAttack2"));
+	if (bufferedAttackDelegate.IsBound())
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("BufferedAttackIsBound and will be executed"));
+		bufferedAttackDelegate.Execute(bufferedDirection);
+	}
 }
 
-void AJanitorCharacter::AnimTierChangeHandler()
+void AJanitorCharacter::AnimTierChangeHandler(AnimationTier currentAT, AnimationTier newAT)
 {
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("AnimTierChangeHandlerCalled"));
+	if (currentAT >= AnimationTier::Attacking && newAT < AnimationTier::Attacking)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("DoBufferedAttack"));
+		DoBufferedAttack();
+	}
 }
 
 void AJanitorCharacter::StartAttacking()
@@ -582,6 +619,20 @@ void AJanitorCharacter::StartInvulnerable()
 void AJanitorCharacter::StopInvulnerable()
 {
 	IsInvulnerable = false;
+}
+
+void AJanitorCharacter::setCurrentAnimTier(AnimationTier newAnimTier)
+{
+	if (newAnimTier != CurrentAnimTier)
+	{
+		AnimTierChangeHandler(CurrentAnimTier, newAnimTier);
+		CurrentAnimTier = newAnimTier;
+	}
+}
+
+AnimationTier AJanitorCharacter::getCurrentAnimTier()
+{
+	return CurrentAnimTier;
 }
 
 DirectionENUM AJanitorCharacter::GetDirection()
@@ -860,6 +911,21 @@ bool AJanitorCharacter::GetIsLockedOn()
 bool AJanitorCharacter::GetIsAirborne()
 {
 	return IsAirborne;
+}
+
+UArrowComponent* AJanitorCharacter::getLockOnArrow()
+{
+	return LockOnArrow;
+}
+
+UArrowComponent* AJanitorCharacter::getFollowArrow()
+{
+	return FollowArrow;
+}
+
+UArrowComponent* AJanitorCharacter::getDirectionArrow()
+{
+	return DirectionArrow;
 }
 
 void AJanitorCharacter::SwapWatergun()
