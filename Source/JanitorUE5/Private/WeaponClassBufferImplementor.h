@@ -30,6 +30,8 @@ protected:
     //UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
     TArray<UHurtBox*> m_HurtBoxArr;
 
+    UAnimMontage* m_RecoveryMontage;
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -62,4 +64,8 @@ public:
     virtual void DoModeAttack(DirectionENUM Direction) override;
 
     TArray<UHurtBox*> GetHurtBoxArray();
+
+    UAnimMontage* getRecoveryMontage();
+
+    void setRecoveryMontage(UAnimMontage* recoveryMontage);
 };

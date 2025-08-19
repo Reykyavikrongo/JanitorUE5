@@ -103,7 +103,11 @@ class AJanitorCharacter : public ACharacter
 
 	AWeaponClassBufferImplementor* CurrentRangedWeapon;
 	AWeaponClassBufferImplementor* CurrentMeleeWeapon;
-
+	// which weapon's animation is being played currently, current weapon might be different then this one
+	// for now it should only be one (not for ranged and melee but all in one since only one anim should be playing at a time)
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Animation, meta = (AllowPrivateAccess = "true"))
+	AWeaponClassBufferImplementor* CurrentAnimationWeapon;
+	
 	// define the variables for each weapon
 	AMarbles* marbles;
 	ABroom* broom;
@@ -129,6 +133,12 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	AWeaponClassBufferImplementor* GetCurrentMeleeWeapon();
+
+	UFUNCTION(BlueprintCallable)
+	AWeaponClassBufferImplementor* getCurrentAnimationWeapon();
+
+	UFUNCTION(BlueprintCallable)
+	void setCurrentAnimationWeapon(AWeaponClassBufferImplementor* currentAnimWeapon);
 
 
 	// Set the default state/style

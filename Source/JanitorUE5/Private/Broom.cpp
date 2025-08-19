@@ -17,7 +17,27 @@ ABroom::ABroom()
 	//Setting the animations
 	ConstructorHelpers::FObjectFinder<UAnimMontage> BroomGroundAttackMontage(TEXT("/Script/Engine.AnimMontage'/Game/Characters/Janitor/CombatAnimations/Montages/broom_combo_1.broom_combo_1'"));
 	FirstGroundAttackMontage = BroomGroundAttackMontage.Object;
+
+	ConstructorHelpers::FObjectFinder<UAnimMontage> test(TEXT("/Script/Engine.AnimMontage'/Game/Characters/Janitor/test_animations/root_motion_test_Montage.root_motion_test_Montage'"));
+	jumptest = test.Object;
+
+	ConstructorHelpers::FObjectFinder<UAnimMontage> test1(TEXT("/Script/Engine.AnimMontage'/Game/Characters/Janitor/test_animations/broom_branch_1_Montage.broom_branch_1_Montage'"));
+	branch1 = test1.Object;
+
+	ConstructorHelpers::FObjectFinder<UAnimMontage> test2(TEXT("/Script/Engine.AnimMontage'/Game/Characters/Janitor/test_animations/broom_branch_2_recovery_Montage.broom_branch_2_recovery_Montage'"));
+	branch1_recovery = test2.Object;
+
+	ConstructorHelpers::FObjectFinder<UAnimMontage> test3(TEXT("/Script/Engine.AnimMontage'/Game/Characters/Janitor/test_animations/broom_branch_2_Montage.broom_branch_2_Montage'"));
+	branch2 = test3.Object;
+
+	ConstructorHelpers::FObjectFinder<UAnimMontage> test4(TEXT("/Script/Engine.AnimMontage'/Game/Characters/Janitor/test_animations/broom_branch_2_recovery_for_real_Montage.broom_branch_2_recovery_for_real_Montage'"));
+	branch2_recovery = test4.Object;
 	
+	ConstructorHelpers::FObjectFinder<UAnimMontage> highTimeMontage(TEXT("/Script/Engine.AnimMontage'/Game/Characters/Janitor/test_animations/high_time_first_Montage.high_time_first_Montage'"));
+	highTime = highTimeMontage.Object;
+
+	ConstructorHelpers::FObjectFinder<UAnimMontage> highTimeRecMontage(TEXT("/Script/Engine.AnimMontage'/Game/Characters/Janitor/test_animations/high_time_recovery_Montage.high_time_recovery_Montage'"));
+	highTimeRecovery = highTimeRecMontage.Object;
 
 	// notice the static keyword is missing here, for future reference it made the wrong mesh be loaded in because i used a placeholder mesh before the actual one i wanted, this is caused by either the VS compiler or the static keyword or the fact that this is the only private classed weapon. idk
 	ConstructorHelpers::FObjectFinder<UStaticMesh> BroomMeshAsset(TEXT("StaticMesh'/Game/Weapons/Broom/broom5/broom_01.broom_01'"));
@@ -31,7 +51,7 @@ ABroom::ABroom()
 	}
 
 	BroomMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	BroomMesh->SetMobility(EComponentMobility::Movable); 
+	BroomMesh->SetMobility(EComponentMobility::Movable);
 	BroomMesh->AddRelativeLocation(FVector(0.0, 0.0, 130.0));
 	BroomMesh->AddRelativeRotation(FRotator(180.0, 0.0, 0.0));
 	BroomMesh->SetWorldScale3D(FVector(0.58, 0.58, 0.58));
@@ -70,7 +90,7 @@ void ABroom::Attack() {
 	if (FirstGroundAttackMontage)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("animation valid (broom)"));
-		m_HurtBoxBrush->SetStatusEffect(StatusEffect::KnockUp);
+		m_HurtBoxBrush->SetStatusEffect(StatusEffect::Stagger);
 		m_HurtBoxBrush->SetCanBeActivated(true);
 		m_HurtBoxBrush->SetAttackName("GroundBroom_1");
 		UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->PlayAnimMontage(FirstGroundAttackMontage, 1, NAME_None);
@@ -90,6 +110,53 @@ void ABroom::AerialAttack() {
 
 void ABroom::ModeAttack() {
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("(Broom) Mode Attack pressed"));
+	if (branch1 && branch2 && branch1_recovery)
+	{
+		switch (janitor->ComboCounter)
+		{
+			case 0:
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("animation valid (broom)branch1"));
+			m_HurtBoxBrush->SetStatusEffect(StatusEffect::Stagger);
+			m_HurtBoxBrush->SetCanBeActivated(true);
+			m_HurtBoxBrush->SetAttackName("ModeAttackBroom_1");
+			setRecoveryMontage(branch1_recovery);
+			UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->PlayAnimMontage(branch1, 1, NAME_None);
+			break;
+			case 1:
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("animation valid (broom)branch2"));
+			m_HurtBoxBrush->SetStatusEffect(StatusEffect::Stagger);
+			m_HurtBoxBrush->SetCanBeActivated(true);
+			m_HurtBoxBrush->SetAttackName("ModeAttackBroom_1");
+			UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->PlayAnimMontage(branch2, 1, NAME_None);
+			break;
+			case 2:
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("animation valid (broom)jumptest"));
+			m_HurtBoxBrush->SetStatusEffect(StatusEffect::Stagger);
+			m_HurtBoxBrush->SetCanBeActivated(true);
+			m_HurtBoxBrush->SetAttackName("ModeAttackBroom_1");
+			setRecoveryMontage(branch2_recovery);
+			UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->PlayAnimMontage(jumptest, 1, NAME_None);
+			default:
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("no attack animation available"));
+		}
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("NO ANIMATION LOADED"));
+	}
+	/*if (jumptest)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("animation valid (broom)"));
+		m_HurtBoxBrush->SetStatusEffect(StatusEffect::Stagger);
+		m_HurtBoxBrush->SetCanBeActivated(true);
+		m_HurtBoxBrush->SetAttackName("ModeAttackBroom_1");
+		UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->PlayAnimMontage(jumptest, 1, NAME_None);
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("NO ANIMATION LOADED"));
+	}*/
+
 	return;
 }
 
@@ -100,11 +167,35 @@ void ABroom::ModeAerialAttack() {
 
 void ABroom::ForwardAttack() {
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("(Broom) Forward Attack pressed"));
+	if (jumptest)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("animation valid (broom)jumptest"));
+		m_HurtBoxBrush->SetStatusEffect(StatusEffect::Stagger);
+		m_HurtBoxBrush->SetCanBeActivated(true);
+		m_HurtBoxBrush->SetAttackName("GroundBroom_1");
+		UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->PlayAnimMontage(jumptest, 1, NAME_None);
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("NO ANIMATION LOADED"));
+	}
 	return;
 }
 
 void ABroom::BackwardAttack() {
 	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("(Broom) Backward Attack pressed"));
+	if (highTime)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("animation valid (broom)highTime"));
+		m_HurtBoxBrush->SetStatusEffect(StatusEffect::KnockUp);
+		m_HurtBoxBrush->SetCanBeActivated(true);
+		m_HurtBoxBrush->SetAttackName("highTime");
+		UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->PlayAnimMontage(highTime, 1, NAME_None);
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("NO ANIMATION LOADED"));
+	}
 	return;
 }
 

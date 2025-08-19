@@ -22,6 +22,7 @@ void UHurtBoxAnimNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, UAni
 					if (meleeAndRangedArray[i]->GetCanBeActivated())
 					{
 						meleeAndRangedArray[i]->SetIsActive(true);
+						GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("HurtBoxIsActive"));
 					}
 				}
 				else

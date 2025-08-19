@@ -201,3 +201,13 @@ TArray<UHurtBox*> AWeaponClassBufferImplementor::GetHurtBoxArray()
 {
 	return m_HurtBoxArr;
 }
+
+UAnimMontage* AWeaponClassBufferImplementor::getRecoveryMontage()
+{
+	return m_RecoveryMontage;
+}
+
+void AWeaponClassBufferImplementor::setRecoveryMontage(UAnimMontage* recoveryMontage)
+{
+	m_RecoveryMontage = recoveryMontage;
+}

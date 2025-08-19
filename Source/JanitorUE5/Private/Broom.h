@@ -24,6 +24,24 @@ public:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
     UAnimMontage* FirstGroundAttackMontage;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
+    UAnimMontage* jumptest;
+    
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
+    UAnimMontage* branch1;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
+    UAnimMontage* branch1_recovery;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
+    UAnimMontage* branch2;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
+    UAnimMontage* branch2_recovery;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
+    UAnimMontage* highTime;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
+    UAnimMontage* highTimeRecovery;
     
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animations)
     UHurtBox* m_HurtBoxBrush;

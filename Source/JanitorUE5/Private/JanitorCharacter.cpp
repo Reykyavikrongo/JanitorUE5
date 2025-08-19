@@ -19,7 +19,6 @@
 // TODO: make stinger animation(keep it simple), implement the movement
 // TODO: Change the AnimTier stuff to be fully triggered when an animation starts and stops and whatnot, will probably need anim notify classes to handle all that stuff (done for comboendnotify just need to do it on start anim notify)
 // TODO: Implement the anim tier system up to attacking tier, (that means idle, moving, taunting and attacking), attacking will al be handled through anim notifys, moving might be through tick unfortunately, taunting might need its own notifies
-// TODO: Buffering needs to be fixed, if lock on is let go after buffering a forward attack, it will perform a normal attack because its not locked on (change logic on attack activation or add a variable to the buffered attack function
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -115,6 +114,16 @@ AWeaponClassBufferImplementor* AJanitorCharacter::GetCurrentRangedWeapon()
 AWeaponClassBufferImplementor* AJanitorCharacter::GetCurrentMeleeWeapon()
 {
 	return CurrentMeleeWeapon;
+}
+
+AWeaponClassBufferImplementor* AJanitorCharacter::getCurrentAnimationWeapon()
+{
+	return CurrentAnimationWeapon;
+}
+
+void AJanitorCharacter::setCurrentAnimationWeapon(AWeaponClassBufferImplementor* currentAnimWeapon)
+{
+	CurrentAnimationWeapon = currentAnimWeapon;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -300,7 +309,7 @@ void AJanitorCharacter::Jump()
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("jump taunt mode"));
 	}
-	else
+	else if (getCurrentAnimTier() <= AnimationTier::Taunting)
 	{
 		JumpPressed = true;
 		if (IsAirborne && (JumpCounter < MaxNOfJumps))
@@ -315,6 +324,10 @@ void AJanitorCharacter::Jump()
 			Super::Jump();
 			JumpCounter++;
 		}
+	}
+	else 
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("cant jump rn"));
 	}
 }
 
@@ -375,8 +388,8 @@ void AJanitorCharacter::Cancel()
 {
 	// TODO: needs a cancel animation or smth (if its jump cancel)
 	this->StopAnimMontage(this->GetCurrentMontage());
-	
-	ComboCounter = 0;
+	// combo counter will be reset in jumpcancel function, and then cancel should be called from the jumpcancel function
+	//ComboCounter = 0;
 	// TODO: this needs to be moved to a seperate file because the functionality is repeated in HurtBoxAnimNotify as well.
 	TArray<UHurtBox*> meleeAndRangedArray;
 	meleeAndRangedArray.Append(GetCurrentMeleeWeapon()->GetHurtBoxArray());
@@ -434,7 +447,8 @@ void AJanitorCharacter::Attack()
 	{
 		if (CancelCheck(AnimationTier::Attacking))
 		{
-			CurrentAnimTier = AnimationTier::Attacking;
+			//CurrentAnimTier = AnimationTier::Attacking;
+			setCurrentAnimationWeapon(GetCurrentMeleeWeapon());
 			CurrentMeleeWeapon->DoAttack(GetDirection());
 		}
 		else
@@ -466,6 +480,7 @@ void AJanitorCharacter::RangedAttack()
 			if (CancelCheck(AnimationTier::Attacking))
 			{
 				CurrentRangedWeapon->DoAttack(GetDirection());
+				setCurrentAnimationWeapon(GetCurrentRangedWeapon());
 			}
 			else
 			{
@@ -492,6 +507,8 @@ void AJanitorCharacter::ModeAttack()
 		{
 			if (CancelCheck(AnimationTier::Attacking))
 			{
+				//CurrentAnimTier = AnimationTier::Attacking;
+				setCurrentAnimationWeapon(GetCurrentMeleeWeapon());
 				CurrentMeleeWeapon->DoModeAttack(GetDirection());
 			}
 			else
@@ -506,6 +523,7 @@ void AJanitorCharacter::ModeAttack()
 			if (CancelCheck(AnimationTier::Attacking))
 			{
 				CurrentRangedWeapon->DoModeAttack(GetDirection());
+				setCurrentAnimationWeapon(GetCurrentRangedWeapon());
 			}
 			else
 			{
@@ -524,7 +542,17 @@ void AJanitorCharacter::DoBufferedAttack()
 	if (bufferedAttackDelegate.IsBound())
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("BufferedAttackIsBound and will be executed"));
+		if (AttackModeState == ModeState::Melee)
+		{
+			setCurrentAnimationWeapon(GetCurrentMeleeWeapon());
+		}
+		else
+		{
+			setCurrentAnimationWeapon(GetCurrentRangedWeapon());
+		}
+
 		bufferedAttackDelegate.Execute(bufferedDirection);
+		bufferedAttackDelegate.Clear();
 	}
 }
 
@@ -534,6 +562,8 @@ void AJanitorCharacter::AnimTierChangeHandler(AnimationTier currentAT, Animation
 	if (currentAT >= AnimationTier::Attacking && newAT < AnimationTier::Attacking)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Black, TEXT("DoBufferedAttack"));
+		// thought this would fix the animation of the buffered attack not playing
+		//this->StopAnimMontage(this->GetCurrentMontage());
 		DoBufferedAttack();
 	}
 }

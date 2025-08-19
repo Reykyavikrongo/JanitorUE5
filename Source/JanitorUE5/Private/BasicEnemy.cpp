@@ -10,28 +10,13 @@ ABasicEnemy::ABasicEnemy()
 {
 	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
-	SkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Skeletal Mesh"));
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SkeletalMeshAsset(TEXT("SkeletalMesh'/Game/Characters/Mannequins/Meshes/SKM_Manny.SKM_Manny'"));
-	SkeletalMesh->SetSkeletalMesh(SkeletalMeshAsset.Object);
-	SkeletalMesh->SetupAttachment(StaticMesh); // it has to be setup to the static mesh because it is inherited from ALockOnablePawn which has a staticmesh setup on its root component
 	/*
 	LockOnComponent->SetupAttachment(StaticMesh);
 	LockOnComponent->SetText(FText::FromString(""));
 	LockOnComponent->SetWorldSize(100);
 	LockOnComponent->SetRelativeLocation(LockOnComponent->GetRelativeLocation() + FVector(0, 0, 100));
 	*/
-	m_HitBox = CreateDefaultSubobject<UBoxComponent>(TEXT("HitBox"));
-	m_HitBox->SetupAttachment(StaticMesh);
-	m_HitBox->SetHiddenInGame(false);
-	m_HitBox->SetVisibility(true);
-	m_HitBox->SetMobility(EComponentMobility::Movable);
-	m_HitBox->SetRelativeScale3D(FVector(1.0, 0.52, 2.9));
-	m_HitBox->SetRelativeLocation(FVector(0, 0, 91));
 
-	bHurtBoxIsOverlapped = false;
-	bIsOnHitCooldown = false;
-	//m_HurtBoxOfJanitorWeapon = CreateDefaultSubobject<UHurtBox>(TEXT("HurtBox"));
 }
 
 // Called when the game starts or when spawned

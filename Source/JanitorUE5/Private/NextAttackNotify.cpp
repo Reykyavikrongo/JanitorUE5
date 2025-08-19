@@ -11,6 +11,9 @@ void UNextAttackNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBa
 	{
 		AJanitorCharacter* janitor = Cast<AJanitorCharacter>(MeshComp->GetOwner());
 		if (janitor)
+		{
 			janitor->ComboCounter++;
+			janitor->setCurrentAnimTier(AnimationTier::Attacking);
+		}
 	}
 }
